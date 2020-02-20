@@ -23,41 +23,16 @@ function Square(props) {
   )
 }
 class Board extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null), // array may not work consistently with larger numbers
-      xIsNext: true,
-      history: []
-    }
-  }
-
-  handleClick(index) {
-    const squares = this.state.squares.slice(); // Array.prototype..slice is more performant on arrays
-    // const squares = [...this.state.squares]; // can spread any iterable objects, not as performant but very close to slice.
-    if (calculateWinner(squares) || squares[index]) {
-      return;
-    }
-    squares[index] = this.state.xIsNext ? 'X' : 'O';
-    this.setState({ squares, xIsNext: !this.state.xIsNext, history: [...this.state.history, squares] });
-  }
 
   renderSquare(i) {
     return <Square
-      onClick={() => this.handleClick(i)}
-      value={this.state.squares[i]} />;
+      onClick={() => this.props.onClick(i)}
+      value={this.props.squares[i]} />;
   }
 
   render() {
-    const winner = calculateWinner(this.state.squares);
-    let status = `Next player: ${this.state.xIsNext ? 'X' : 'O'}`;
-    if (!!winner) {
-      status = `Winner: ${winner}`
-    }
-
     return (
       <div>
-        <div className="status">{status}</div>
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -79,15 +54,71 @@ class Board extends React.Component {
 }
 
 class Game extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      history: [{
+        squares: Array(9).fill(null),
+      }],
+      xIsNext: true,
+      stepNumber: 0,
+    }
+  }
+
+  handleClick(index) {
+    const history = this.state.history.slice(0, this.state.stepNumber + 1)
+    const current = history[history.length - 1];
+    const squares = current.squares.slice(); // Array.prototype..slice is more performant on arrays
+    // const squares = [...this.state.squares]; // can spread any iterable objects, not as performant but very close to slice.
+    if (calculateWinner(squares) || squares[index]) {
+      return;
+    }
+    squares[index] = this.state.xIsNext ? 'X' : 'O';
+    this.setState({
+      history: history.concat([{
+        squares: squares,
+      }]), 
+      stepNumber: history.length,
+      xIsNext: !this.state.xIsNext
+    });
+
+  }
+
+  jumpTo(move) {
+    this.setState({
+      stepNumber: move,
+      xIsNext: (move % 2) === 0,
+    })
+  }
+
   render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+    let status = `Next player: ${this.state.xIsNext ? 'X' : 'O'}`;
+    if (!!winner) {
+      status = `Winner: ${winner}`
+    }
+
+    const moves = history.map((step, move) => {
+      const desc = move ?
+        'Go to move #' + move :
+        'Go to game start';
+      return (
+        <li key={move}>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      );
+    })
+
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          <Board squares={current.squares} onClick={(i) => this.handleClick(i)} />
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <div>{status}</div>
+          <ol>{moves}</ol>
         </div>
       </div>
     );
